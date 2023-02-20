@@ -1,0 +1,177 @@
+<?php include_once 'header.php'; ?>
+<!-- VIEW BLACKLIST -->
+
+<div class="row">
+    <div class="col-sm-12">
+        <div class="box box-bordered box-color">
+            <div class="box-title">
+                <h3><i class="fa fa-user"></i><?php echo!empty($user) ? 'Edit' : 'Add' ?> User</h3>
+            </div>
+            <div class="box-content nopadding pre-scrollable">
+
+                <form action="<?php echo isset($company_id) ? $host.'/user/add/'.$company_id : $host.'/user/add/' ?>" method="POST" class='form-horizontal form-striped'>
+
+                    <input type="hidden" name="user_id" value="<?php echo isset($company_id) ? $company_id : '' ?>">
+
+                    <div class="form-group">
+                        <label for="textfield" class="control-label col-sm-2">Company Name</label>	
+                        <div class="col-sm-10">
+                            <input type="text" name="company_name" placeholder="Company Name" class="form-control" value="<?php echo isset($company_name) ? $company_name : '' ?>" required>
+                        </div>
+                    </div>
+
+                    <!-- Add Primary Contact-->
+
+                    <div class="form-group">
+                        <label for="textfield" class="control-label col-sm-2">Primary Contact </label>	
+                        <div class="col-sm-10">
+                            <input type="email" name="primary_email" placeholder="Email Address" class="form-control" value="<?php echo isset($primary_user) ? $primary_user->getEmail() : '' ?>" required>
+                        </div>
+                    </div>                
+
+                    <div class="form-group">
+                        <label for="textfield" class="control-label col-sm-2">Role</label>
+                        <div class="col-sm-10">
+
+                            <?php if (isset($company_id)): ?>
+
+                                <input type="text" class="form-control" value="<?php echo $role; ?>" disabled>
+                                <input type="hidden" name="role" class="form-control" value="<?php echo $role; ?>" >
+
+                            <?php else: ?>
+                            <select name="role" id="select" class='chosen-select form-control' <?php echo (!isset($company_id) && $company_id == NULL) ? 'disabled="disabled"' : '' ?> required>
+                                <option value="admin">Administrator</option>
+                                <option value="accumulator">List Accumulator</option>
+                                <option value="provider">Provider</option>
+                            </select>
+                            <?php endif ?>
+                        </div>
+                    </div>
+
+                    <!-- Add Secondary Contact-->
+                    <div id="secondaryEmailContainer">
+
+                        <?php 
+                            if (!empty($secondary_user)) :
+                                # code...
+                                foreach ($secondary_user as $key => $user) :
+                        ?>
+
+                        <div class="form-group" id="dynamicInput<?php echo $key + 1 ?>">
+                        
+                            <label for="textfield" class="control-label col-sm-2">Secondary Contact <?php echo $key + 1 ?></label>
+                            <div class="col-sm-8">
+                                <input id="email<?php echo $key + 1 ?>" type="email" name="secondary_email[]" class="form-control" placeholder="Email" value="<?php echo $user->getEmail() ?>">
+                            </div>
+                            <div id="btn1" class="col-sm-2">
+                                <?php if ($key == count($secondary_user) - 1) : ?>
+                                    <a class="btn btn-primary" onClick="addInput(<?php echo $key + 1 ?>);">Add Another Contact</a>
+                                <?php else: ?>
+                                    <a class="btn btn-danger" onClick="removeContact(<?php echo $key + 1 ?>)">Remove Contact</a>
+                                <?php endif ?>
+                            </div>
+                            
+                        </div>
+
+                        <?php 
+                                endforeach; 
+                            else:
+                        ?>
+
+                            <div class="form-group" id="dynamicInput">
+                            
+                                <label for="textfield" class="control-label col-sm-2">Secondary Contact 1</label>
+                                <div class="col-sm-8">
+                                    <input id="email1" type="email" name="secondary_email[]" class="form-control" placeholder="Email">
+                                </div>
+                                <div id="btn1" class="col-sm-2">
+                                    <a class="btn btn-primary" onClick="addInput(1);">Add Another Contact</a>
+                                </div>
+                                
+                            </div>
+
+                        <?php
+                            endif;
+                        ?>
+
+                    </div>
+
+                    <div class="form-actions col-sm-offset-2 col-sm-10">
+                        <button type="submit" name="addNewUserBtn" class="btn btn-primary">Save</button>
+                        <button type="reset" class="btn">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    var counter = 1;
+    var limit = 3;
+
+    function addInput(inputNumber) {
+
+        var primary = document.getElementById('email' + inputNumber).value;
+        // alert(primary);
+
+        if(primary == '' || counter == limit){
+            alert("Check your Secondary Email");
+        }
+        else {
+            var newSecondaryEmail = '<div class="form-group" id="dynamicInput' + (inputNumber+1) + '">';
+            newSecondaryEmail += '<label for="textfield" class="control-label col-sm-2">Secondary Contact '+ (inputNumber+1) +'</label>';
+            newSecondaryEmail += '<div class="col-sm-8"><input id="email' + (inputNumber+1) + '" type="email" name="secondary_email[]" class="form-control" placeholder="Email"></div>';
+            newSecondaryEmail += '<div id="btn' + (inputNumber+1) + '"class="col-sm-2"><a class="btn btn-primary" onClick="addInput('+ (inputNumber+1) +')\;">Add Another Contact</a></div>';
+
+            $('#secondaryEmailContainer').append(newSecondaryEmail);
+
+            // $('#btn'+inputNumber).remove();
+            $('#btn'+inputNumber).html('<a class="btn btn-danger" onClick="removeContact('+ (inputNumber) +')\;">Remove Contact</a>');
+
+            counter++;
+        }
+    }
+
+    function addContact(inputNumber,company){
+        // Effect in Persistent DB
+        var email = $('#email' + inputNumber).val();
+
+        $.ajax({
+           url: '<?php echo ROOT_URL?>api/addUser/'+ email + '/' + company,
+           error: function() {
+              alert('An error has occurred. Contact Administrator');
+           },
+           success: function(data) {
+              $('#dynamicInput'+inputNumber).remove();
+           },
+           type: 'GET'
+        });
+    }
+
+    function removeContact(inputNumber){
+        // Confirm Deletion
+        var _delete = confirm('Are you sure?');
+
+        // Effect in Persistent DB
+        // var email = $('#email' + inputNumber).val();
+        if (_delete) {
+
+            $('#dynamicInput'+inputNumber).remove();
+
+            $.ajax({
+               url: '<?php echo ROOT_URL?>api/deleteUser/'+ email,
+               error: function() {
+                  alert('An error has occurred. Contact Administrator');
+               },
+               success: function(data) {
+                  $('#dynamicInput'+inputNumber).remove();
+               },
+               type: 'GET'
+            });
+        }
+    }
+
+</script>
+
+<?php include_once 'footer.php'; ?>
